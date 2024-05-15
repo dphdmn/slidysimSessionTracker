@@ -1,5 +1,8 @@
 venv
 .idea
-sessionTrackerResources/sessionTracker.cfg
 img_tmp.svg
 scramble_tmp.png
+slidy.exe
+app_spec.spec
+build
+dist
