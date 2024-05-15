@@ -3,6 +3,8 @@ GUI application, written in Python/Tkinter to track session stats for sliding pu
 
 ![Main Screenshot](github_examples/main.png)
 
+## [v1.0.0 windows release](https://github.com/dphdmn/slidysimSessionTracker/releases/tag/v1.0.0)
+
 ### Features:
 
 - **Real-Time Session Tracking:** Automatically updates your session progress each time you switch to the app, loading new solves from the database. You have the option to disable this feature at any time. Load older results from the database and limit the time frame.
