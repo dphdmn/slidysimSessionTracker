@@ -1,31 +1,41 @@
 # slidysimSessionTracker
 GUI application, written in Python/Tkinter to track session stats for sliding puzzle simulator slidysim.com
 
+![Main Screenshot](github_examples/main.png)
+
 ### Features:
 
-- **Real-Time Session Tracking:** Automatically updates your session progress each time you switch to the app, loading new solves from the database. You have the option to disable this feature at any time.
+- **Real-Time Session Tracking:** Automatically updates your session progress each time you switch to the app, loading new solves from the database. You have the option to disable this feature at any time. Load older results from the database and limit the time frame.
+
+![update](github_examples/update.gif)
 
 - **Automatic Preset Loading:** Based on the solves you complete, the app automatically loads presets of categories you have solved.
 
+![presets](github_examples/presets.png)
+
 - **Comprehensive Stats:** View general session statistics including session duration, total solving time, number of solves completed/skipped/incomplete, mean stats for time, moves, TPS (turns per second), and your best solves.
 
-- **Detailed Solves Sheet:** Access a detailed sheet containing all your solves. You can even enable skipped or unfinished solves for a complete overview.
+![stats](github_examples/stats.png)
 
-- **Detailed Solve Analysis:** Selecting a single solve provides a detailed reconstruction of the solve, an image of the solve, and a clickable link to the reconstruction with move-times accuracy.
+- **Detailed Solves Sheet:** Access a detailed sheet containing all your solves. You can even enable skipped or unfinished solves for a complete overview. Apply various sorting options to the sheet with visualizations of completed/incomplete solves for better insights.
 
-- **Batch Solve Analysis:** Select multiple solves to view average stats, carefully calculated with consideration of skipped and incomplete solves. Export detailed stats for each selected solve.
+![sheet](github_examples/sheet.png)
 
-- **Sortable Sheet with Visualizations:** Apply various sorting options to the sheet with visualizations of completed/incomplete solves for better insights.
+- **Detailed Single-Solve Analysis:** Selecting a single solve provides a detailed reconstruction of the solve, an image of the solve, and a clickable link to the reconstruction with move-times accuracy.
 
-- **Histogram Plot:** View a histogram plot for multiple selected solves, showing the distribution of results. Click on the histogram to iterate between time, moves, and TPS images.
+![replay](github_examples/replay.gif)
+
+- **Batch Solve Analysis:** Select multiple solves to view average stats, carefully calculated with consideration of skipped and incomplete solves. Export detailed stats for each selected solve. View a histogram plot for multiple selected solves, showing the distribution of results. Click on the histogram to iterate between time, moves, and TPS images.
+
+![bulk](github_examples/bulk.png)
 
 - **Support for Complex Solve Types:** Supports stats for complex solve types such as relay or marathon. Get general stats, different types of graphs, and information about averages of complex categories.
 
-- **Load Older Results:** Load older results from the database and limit the time frame. Be cautious as the app is not heavily optimized for this feature yet.
-
-- **Selective Presets:** Select one preset at a time for intended use. Special features allow selecting all categories or individual checkboxes to combine solves from different puzzles in one table.
+![relay](github_examples/relay.png)
 
 - **Cross-Solve Type Analysis:** By default, the app loads single results from all solve types. For example, load all 4x4 singles from 4x4 2-N relays to analyze your averages across various solve types. You can disable it at any moment.
+
+![Egg](github_examples/Egg.png)
 
 ---
 
