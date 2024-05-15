@@ -25,20 +25,6 @@ from tktimepicker import SpinTimePickerModern
 import locale
 from cairosvg import svg2png
 
-# cariosvg import issue solution for windows:
-# 1) pip install pipwin
-# 2) pipwin install cairocffi
-
-# Known issues and notes:
-# - this program does not support any scrambler type besides Random Permutation, no random moves, no custom difficutly, because i can't be bothered with this, i already have enough mess on the screen and the code to add these filters
-# - Export for selected BULK solves of complex type does not include singles information, it is only available when selecting ONE of them, I might change that in the future, and add at least time/moves/tps, but it seems unnecessary for the most part
-# - BLD completion status is pretty much this: True if completed and success, False if either of these is 0, no intermediate stages
-# - I have (probably) fixed all the potential overlapping cases when mutliple solve types are selected with Singles, so it should in theory show correct total time and other stats, but I have not done much testing yet and results may be confusing when you play with it. For example, when you select both 3x3 relay and 3x3 singles, it would show 4 singles and 1 relay, but will show 4 solves in total, and total time would exclude one single done inside of relay, preventing overalapping, which is correct behaviour if you think about it long enough. I might still be missing something, it is really confusing. Please let me know about all possible issues of that kind.
-# - Update algorithm is not very well optimized, and was not really designed to work well with some very huge amounts of solves, rather the main purpuse is doing 1 session, or a week-long stats etc. I have been thinking about making update keep the data from previous updates, and make update only fetch new results on each update. Consider that the most realistic possible future optimization, as it does not sound very hard, but not on top of my priorities. And if to really really think about, updating DB requests for regual updates might be easy, but updating all the processing steps and table updating, stats, well, not so easy. Maybe in the far future, if I still would care about making it work better.
-# - Presets are not generated for extra singles when singles are loaded as Main, because it would be too messy and sort-of difficult to add, but you still can find them in "Puzzle" checboxes list!
-# - Selecting "ALL" categories per each list of categories is not hard to make, but I can't see too much use to it, I have added "ALL" preset, so you can get total stats and ALL solves, it is laggy
-# - If you want to change default path to db, edit or delete the config file, the app will try to connect by default "" path, and if fails, asks you for new path
-# - RED color in stats window means some of selected solves are unfinished or skipped, green otherwise, i might tweak the logic later
 DESCENDING_SORTING_TK = 1
 FIRST_COLUMN_ID = 0
 LENGTH_LIMIT_LINK = 5300
