@@ -90,7 +90,7 @@ By following these instructions, you should have all the necessary dependencies 
 
 - **Selecting "ALL" Categories**: Adding a feature to select "ALL" categories in each list is not difficult, but it seems to have limited use. An "ALL" preset has been added to get total stats and all solves, though it may be laggy.
 
-- **Default DB Path**: To change the default path to the database, edit or delete the config file. The app will try to connect to the default "" path and will prompt for a new path if it fails.
+- **Default DB Path**: To change the default path to the database, edit the config file. The app will try to connect to the default "" path and will prompt for a new path if it fails.
 
 - **Stats Window Color Coding**: In the stats window, red indicates some of the selected solves are unfinished or skipped, while green means all selected solves are complete. This logic may be tweaked in the future.
 
