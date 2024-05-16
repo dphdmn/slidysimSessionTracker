@@ -24,6 +24,9 @@ import configparser
 from tktimepicker import SpinTimePickerModern
 import locale
 from cairosvg import svg2png
+import shutil
+
+#pyinstaller -F --clean --noconsole --icon=icon.ico main.py
 
 DESCENDING_SORTING_TK = 1
 FIRST_COLUMN_ID = 0
@@ -1931,6 +1934,10 @@ def run():
     root = ttk.Window(size=(MY_WINDOW_WIDTH, MY_WINDOW_HEIGHT), title=MY_APP_TITLE, themename='darkly',
                       minsize=(MY_WINDOW_WIDTH, MY_WINDOW_HEIGHT), position=(50, 50))
     setIcon(root)
+    if not shutil.which("slidy"):
+        Messagebox.show_error(
+            "Slidy-cli was not found, please put it in the folder of the script and call 'slidy' (slidy.exe)\nYou can download it from github at https://github.com/benwh1/slidy-cli/releases/tag/v0.2.0")
+        exit()
     dbpath = connect(root)
     sessionControlFrame, categoryLimiterFrame, graphsFrame, solvesFrame = createFramesUI(root)
     sessionControls = createSessionControlFrameUI(sessionControlFrame, dbpath)

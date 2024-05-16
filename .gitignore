@@ -8,3 +8,4 @@ build
 dist
 main.spec
 sessionTrackerResources/sessionTracker.cfg
+icon.ico
