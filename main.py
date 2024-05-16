@@ -42,7 +42,7 @@ DB_ERROR_FETCHING_6 = "Critical error when fetching Single solves as Main. \nExi
 ENTER_SLIDYSIM_PATH_REQUEST = "Enter Slidysim folder path\n(press Cancel to close the App)"
 MY_WINDOW_WIDTH = 1600
 MY_WINDOW_HEIGHT = 900
-MY_APP_TITLE = "Slidysim Session Tracker v1.0.0"
+MY_APP_TITLE = "Slidysim Session Tracker v1.0.1"
 SLIDYSIM_DEFAULT_PATH = ""
 TABLE_SEPARATOR = ";"
 singleHeaders = ["Parent", "Puzzle", "Completed", "Time", "Moves", "TPS", "Scramble", "Solution", "Movetimes",
@@ -291,18 +291,22 @@ def renderPuzzleImage(scramble, imageLabel, reconstructionLink, iLoveEgg=False):
         imageLabel.bind('<ButtonRelease-1>',
                         lambda event: toastUpdate("I love Egg!\n(Clicking Egg does nothing, do solves already"))
     else:
-        file = 'scramble_tmp.png'
-        command = [
-            "slidy",
-            "render",
-            "--output",
-            "img_tmp.svg",
-            scramble
-        ]
-        subprocess.run(command)
-        with open("img_tmp.svg", 'r') as mysvg:
-            svg2png(output_height=int(MY_WINDOW_HEIGHT / 2.5), output_width=int(MY_WINDOW_WIDTH / 2.7),
-                    bytestring=mysvg.read(), write_to=file)
+        try:
+            file = 'scramble_tmp.png'
+            command = [
+                "slidy2",
+                "render",
+                "--output",
+                "img_tmp.svg",
+                scramble
+            ]
+            subprocess.run(command)
+            with open("img_tmp.svg", 'r') as mysvg:
+                svg2png(output_height=int(MY_WINDOW_HEIGHT / 2.5), output_width=int(MY_WINDOW_WIDTH / 2.7),
+                        bytestring=mysvg.read(), write_to=file)
+        except FileNotFoundError:
+            Messagebox.show_error("Slidy-cli was not found, please put it in the folder of the script and call 'slidy' (slidy.exe)\nYou can download it from github at https://github.com/benwh1/slidy-cli/releases/tag/v0.2.0")
+            exit()
         if reconstructionLink:
             imageLabel.configure(cursor='hand2')
             imageLabel.bind('<ButtonRelease-1>', lambda event: webbrowser.open(reconstructionLink))
@@ -1610,8 +1614,9 @@ def manageSolvesTable(mainSolvesData, dbpath, tableComponents, categoryFilters, 
     styleSolvesTable(addedRowIDs, mainSolvesData, solvesTable, includeSkipped, columns)
     solvesTable.view.bind("<ButtonRelease-1>", selectionController.solvesSelectedEvent)
     solvesTable.view.bind("<Return>", selectionController.solvesSelectedEvent)
-    selectionController.solvesSelectedEvent(event=None)
+
     solvesTable.sort_column_data(cid=FIRST_COLUMN_ID, sort=DESCENDING_SORTING_TK)
+    selectionController.solvesSelectedEvent(event=None)
 
 
 def addItemToTree(sessionTree, title, value):
@@ -1909,7 +1914,10 @@ def setIcon(root):
 def connect(root):
     config = load_config()
     global SLIDYSIM_DEFAULT_PATH
-    SLIDYSIM_DEFAULT_PATH = config.get('DEFAULTS', 'db_path')
+    try:
+        SLIDYSIM_DEFAULT_PATH = config.get('DEFAULTS', 'db_path')
+    except configparser.NoSectionError:
+        update_config('DEFAULTS', 'DB_PATH', SLIDYSIM_DEFAULT_PATH)
     dbpath = getPathFromUser(root)
     if dbpath is None:
         exit()

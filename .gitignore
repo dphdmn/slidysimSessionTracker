@@ -7,3 +7,4 @@ app_spec.spec
 build
 dist
 main.spec
+sessionTrackerResources/sessionTracker.cfg
