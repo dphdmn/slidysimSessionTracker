@@ -294,7 +294,7 @@ def renderPuzzleImage(scramble, imageLabel, reconstructionLink, iLoveEgg=False):
         try:
             file = 'scramble_tmp.png'
             command = [
-                "slidy2",
+                "slidy",
                 "render",
                 "--output",
                 "img_tmp.svg",
