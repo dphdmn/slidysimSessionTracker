@@ -18,7 +18,10 @@ from ttkbootstrap.tableview import Tableview
 from datetime import datetime
 from datetime import timedelta
 import webbrowser
-from matplotlib import pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import configparser
 from tktimepicker import SpinTimePickerModern
