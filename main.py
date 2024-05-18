@@ -21,7 +21,6 @@ import webbrowser
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import configparser
 from tktimepicker import SpinTimePickerModern
