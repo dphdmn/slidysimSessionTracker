@@ -76,6 +76,12 @@ If you encounter issues with importing `cairosvg` on Windows, follow these steps
 By following these instructions, you should have all the necessary dependencies installed and configured correctly.
 # Known Issues and Notes
 
+### Windows 11 flickering issue
+
+When running app from exe under Win11, I have noticed flickering issue with automatic updates. It starts running them over and over again, and some window opens on top of it. Turns out it is slidy.exe running from subprocess command. It does not occur when program is running from python script directly, and it was not an issue at Windows 10, no slidy.exe cmd window was ever visible. To avoid infinite loop of updates, make sure to go to your windows terminal settings, and set default terminal to old cmd, instead of "let windows decide" or a new one. Opening new terminal by default seem to trigger lose focus event on an app, so it runs update again.
+
+### Other notes
+
 - **Scrambler Limitations**: The program supports only the Random Permutation scrambler type. It does not support random moves or custom difficulty settings. Implementing these features would add complexity to an already cluttered interface and codebase.
   
 - **Bulk Export Limitation**: When exporting selected BULK solves of complex type, singles information is not included. This data is only available when selecting one solve. In the future, I may add time, moves, and TPS information for BULK exports, but it seems largely unnecessary.
