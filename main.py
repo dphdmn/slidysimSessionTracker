@@ -19,6 +19,7 @@ from datetime import datetime
 from datetime import timedelta
 import webbrowser
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from PIL import Image, ImageTk, ImageDraw, ImageFont
@@ -28,7 +29,7 @@ import locale
 from cairosvg import svg2png
 import shutil
 
-#pyinstaller -F --clean --noconsole --icon=icon.ico main.py
+# pyinstaller -F --clean --noconsole --icon=icon.ico main.py
 
 DESCENDING_SORTING_TK = 1
 FIRST_COLUMN_ID = 0
@@ -310,7 +311,8 @@ def renderPuzzleImage(scramble, imageLabel, reconstructionLink, iLoveEgg=False):
                 svg2png(output_height=int(MY_WINDOW_HEIGHT / 2.5), output_width=int(MY_WINDOW_WIDTH / 2.7),
                         bytestring=mysvg.read(), write_to=file)
         except FileNotFoundError:
-            Messagebox.show_error("Slidy-cli was not found, please put it in the folder of the script and call 'slidy' (slidy.exe)\nYou can download it from github at https://github.com/benwh1/slidy-cli/releases/tag/v0.2.0")
+            Messagebox.show_error(
+                "Slidy-cli was not found, please put it in the folder of the script and call 'slidy' (slidy.exe)\nYou can download it from github at https://github.com/benwh1/slidy-cli/releases/tag/v0.2.0")
             exit()
         if reconstructionLink:
             imageLabel.configure(cursor='hand2')
@@ -622,7 +624,6 @@ def createSessionControlFrameUI(frame, dbpath):
     timeEntryTo.configureAll(**options)
     timeEntryTo.configure_separator(**{"background": "#333333"})
 
-    startSessionButton = ttk.Button(buttonsContainer, text="Start new session", style='primary.TButton', width=40)
     updateButton = ttk.Button(buttonsContainer, bootstyle="info", text="Update", width=40)
 
     setToLatestVar = tk.BooleanVar()
@@ -635,7 +636,6 @@ def createSessionControlFrameUI(frame, dbpath):
     autoUpdateVar.trace("w", lambda *args: autoUpdateVar.get())
     autoUpdateVarCB = tk.Checkbutton(buttonsContainer, text="Auto-update on focus", variable=autoUpdateVar)
 
-    startSessionButton.pack(side=tk.TOP, padx=12, pady=5)
     updateButton.pack(side=tk.TOP, padx=10, pady=5)
     dateEntryContainer.pack(fill=tk.BOTH, pady=5)
     dateEntryContainerTwo.pack(fill=tk.BOTH, pady=5)
@@ -666,8 +666,7 @@ def createSessionControlFrameUI(frame, dbpath):
     tree.bind("<Button-1>", disable_resizing)
     tree.bind("<ButtonRelease-1>", lambda event: copy_tree_to_clipboard(event, tree))
     tree.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=5)
-    return {"startSessionButton": startSessionButton,
-            "updateButton": updateButton,
+    return {"updateButton": updateButton,
             "sessionTree": tree,
             "updateProgress": progress,
             "setToLatest": setToLatestVar,
@@ -1285,6 +1284,7 @@ def getBestAverageOf(mainfield, amount, solves):
             best_average = None
             best_secondary_field_one_average = None
             best_secondary_field_two_average = None
+            best_date = None  # TESTING
             expectedLen = amount - 2
             for i in range(len(solves) - amount + 1):
                 window = solves[i:i + amount]
@@ -1307,10 +1307,11 @@ def getBestAverageOf(mainfield, amount, solves):
                     best_average = average
                     best_secondary_field_one_average = secondary_field_one_average
                     best_secondary_field_two_average = secondary_field_two_average
+                    best_date = window[-1]['parent_data']["date"]  # TESTING
             if best_average is not None:
                 best_average_formatter = formatStat(best_average, best_secondary_field_one_average,
                                                     best_secondary_field_two_average)
-                return f"Best ao{amount}: {best_average_formatter}\n"
+                return f"Best ao{amount}: {best_average_formatter} | {best_date}\n"  # TESTING DATE PART
             else:
                 return None
 
@@ -1326,7 +1327,13 @@ def longest_consecutive_valid_solves(solves):
 def calculateAvgs(field, solves):
     averages = []
     all = longest_consecutive_valid_solves(solves)
-    amounts = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 12, 5, 1]
+    # amounts = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 12, 5, 1]
+
+    # TESTING
+    amounts = list(range(4, min(all, 101)))  # creates a list from 4 to `all`
+    amounts.append(1)  # adds 1 at the end of the list
+    # TESTING
+
     if all > 5 and all not in amounts:
         amounts.insert(0, all)
     for amount in amounts:
@@ -1692,6 +1699,13 @@ def fillSessionTree(sessionTree, mainSolvesData, dynamic, skippedLen, singlesDat
     return mainSolvesData
 
 
+def was_file_changed(file_path, last_known_mtime):
+    try:
+        return os.path.getmtime(file_path) != last_known_mtime
+    except OSError:
+        return True  # File was deleted or inaccessible
+
+
 class SessionController:
     def __init__(self, dbpath, limitedCategoriesFrames, sessionTree, updateProgress, root, setToLatest,
                  tableComponents, graphComponents, autoUpdateVar, datePickerElements):
@@ -1711,6 +1725,7 @@ class SessionController:
         self.tableComponents = tableComponents
         self.graphComponents = graphComponents
         self.datePickerElements = datePickerElements
+        self.lastKnownChange = 0
         self.configureTableCheckbox()
 
     def configureTableCheckbox(self):
@@ -1872,7 +1887,17 @@ class SessionController:
             self.startNewSession()
         else:
             customrange = self.getCustomRange()
-            if customrange == (self.timestamp_min, self.timestamp_max):
+
+            # Convert millisecond timestamps to minutes (discarding seconds and ms)
+            millis_per_minute = 60 * 1000  # 60,000 ms in a minute
+
+            # Floor division to get minute-level alignment
+            min_start = self.timestamp_min // millis_per_minute
+            min_end = self.timestamp_max // millis_per_minute
+            custom_min_start = customrange[0] // millis_per_minute
+            custom_min_end = customrange[1] // millis_per_minute
+
+            if (min_start == custom_min_start and min_end == custom_min_end):
                 self.update()
             else:
                 self.customRangeUpdate(customrange)
@@ -1886,7 +1911,8 @@ class SessionController:
         return getPickedTimestamps(self.datePickerElements)
 
     def rootFocusedIn(self, event):
-        if event.widget == self.root and self.dynamic and self.autoUpdateVar.get():
+        if event.widget == self.root and self.autoUpdateVar.get() and was_file_changed(self.dbpath, self.lastKnownChange):
+            self.lastKnownChange = os.path.getmtime(self.dbpath)
             self.regularUpdate()
 
 
@@ -1902,7 +1928,6 @@ def configureSessionControls(sessionControls, dbpath, limitedCategoriesFrames, r
                                            sessionControls["autoUpdateVar"],
                                            sessionControls["datePickerElements"])
 
-    sessionControls.get("startSessionButton").configure(command=session_controller.startNewSession)
     sessionControls.get("updateButton").configure(command=session_controller.regularUpdate)
     root.bind("<FocusIn>", session_controller.rootFocusedIn)
 
