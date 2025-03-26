@@ -74,6 +74,9 @@ If you encounter issues with importing `cairosvg` on Windows, follow these steps
    ```
 
 By following these instructions, you should have all the necessary dependencies installed and configured correctly.
+
+#### pipwin in windows also may now install properly on new versions of python. It worked for me in 3.9.13.
+
 # Known Issues and Notes
 
 ### Windows 11 flickering issue
