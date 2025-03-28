@@ -45,7 +45,7 @@ DB_ERROR_FETCHING_6 = "Critical error when fetching Single solves as Main. \nExi
 ENTER_SLIDYSIM_PATH_REQUEST = "Enter Slidysim folder path\n(press Cancel to close the App)"
 MY_WINDOW_WIDTH = 1600
 MY_WINDOW_HEIGHT = 900
-MY_APP_TITLE = "Slidysim Session Tracker v2.0.0 beta"
+MY_APP_TITLE = "Slidysim Session Tracker v2.0.0"
 SLIDYSIM_DEFAULT_PATH = ""
 TABLE_SEPARATOR = ";"
 singleHeaders = ["Parent", "Puzzle", "Completed", "Time", "Moves", "TPS", "Scramble", "Solution", "Movetimes",
@@ -291,6 +291,7 @@ def renderPuzzleImage(imageLabel, reconstructionLink):
     file = 'sessionTrackerResources/i_love_egg.png'
     if reconstructionLink:
         imageLabel.configure(cursor='hand2')
+
         def _open_link(event):
             try:
                 webbrowser.open(reconstructionLink)
@@ -309,6 +310,7 @@ def renderPuzzleImage(imageLabel, reconstructionLink):
                     toast.show_toast()
                 else:
                     raise
+
         imageLabel.bind('<ButtonRelease-1>', _open_link)
     else:
         imageLabel.unbind('<ButtonRelease-1>')
@@ -508,7 +510,8 @@ def createGraphsFrameUI(frame):
     textbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     textbox.configure(width=int(MY_WINDOW_WIDTH / 28))
     graphContainer.pack(side=tk.LEFT, fill=BOTH, expand=True, padx=10)
-    graphLabel = tk.Label(master=graphContainer, text="Reconstruction Link Egg Image. Click on it after selecteing a solve!")
+    graphLabel = tk.Label(master=graphContainer,
+                          text="Reconstruction Link Egg Image. Click on it after selecteing a solve!")
     graphLabel.config(borderwidth=2, relief="groove", highlightthickness=2)
     graphLabel.pack(side=tk.TOP, fill=tk.BOTH, ipadx=10, ipady=2, expand=False, anchor="center")
     yscrollbar = Scrollbar(singleSolvesInfoContainer, orient="vertical", bootstyle="info", command=textbox.yview)
@@ -1113,6 +1116,9 @@ def isCompleted(item):
     return completed and success
 
 
+def encodeURIComponent(string):
+    return ''.join(c if c.isalnum() or c in ['-', '_', '.', '~'] else f"%{ord(c):02X}" for c in string)
+
 def getReconstructionLink(solution, tpsintform, scramble, movetimeslist=-1):
     input_array = [solution, tpsintform, scramble, movetimeslist]
     json_string = json.dumps(input_array)
@@ -1121,8 +1127,66 @@ def getReconstructionLink(solution, tpsintform, scramble, movetimeslist=-1):
     return "https://slidysim.online/replay?r=" + ''.join(
         c if c.isalnum() or c in ['-', '_', '.', '~'] else f"%{ord(c):02X}" for c in base64_encoded_string)
 
+def getReplay(solves, avgTime=-1, avgMoves=-1, avgTPS=-1):
+    replay_gen = ReplayGenerator()
+    width, height = solves[0]['puzzle'].split('x')
+    controlsText = solves[0]['parent_data']['controls']
+    displayType = solves[0]['parent_data']['display_type']
+    solveType = solves[0]['parent_data']['solve_type']
+    timestamp = solves[0]['parent_data']['timestamp']
+    finalTime = -1
+    finalMoves = -1
+    finalTPS = -1
+    bldMemoList = -1
+    if 'BLD' in solveType:
+        bldMemoList = []
+        for solve in solves:
+            bldMemoList.append(solve['parent_data']['bldinfo']['memo_time'])
 
-def parseBulkSinglesCompact(solves, isMarathon, tableseparator=" " * 4):
+    if ('relay' in solveType) or ("Marathon" in solveType):
+        finalTime = int(solves[0]['parent_data']['time']*1000)
+        finalMoves = int(solves[0]['parent_data']['moves'] * 1000)
+        finalTPS = int(solves[0]['parent_data']['tps'] * 1000)
+    if (avgTime != -1):
+        finalTime = int(avgTime*1000)
+        finalMoves = int(avgMoves*1000)
+        finalTPS = int(avgTPS*1000)
+    if "Marathon" in solveType:
+        solveType = "Marathon " + str(len(solves))
+    width = int(width)
+    height = int(height)
+    timeList = []
+    movesList = []
+    tpsList = []
+    movetimesList = []
+    solutionsList = []
+    for solve in solves:
+        timeList.append(solve['time'])
+        movesList.append(solve['moves'])
+        tpsList.append(solve['tps'])
+        solutionsList.append(solve['solution'])
+        movetimesList.append(solve['movetimes'])
+    replay_url = replay_gen.generate_complex_replay(
+        width=width,
+        height=height,
+        controlsText=controlsText,
+        solveType=solveType,
+        displayType=displayType,
+        timestamp=timestamp,
+        solutionsList=solutionsList,
+        timesList=timeList,
+        movesList=movesList,
+        tpsList=tpsList,
+        bldMemoList=bldMemoList,
+        movetimesList=movetimesList,
+        FinalTimeMS=finalTime,
+        FinalMovesMS=finalMoves,
+        FinalTPSMS=finalTPS
+    )
+    return replay_url
+
+def parseBulkSinglesCompact(solves, isMarathon):
+    complexReplay = getReplay(solves)
     tableseparator = "\t"
     parentData = solves[0]['parent_data']
     parent_solve_type = parentData['solve_type']
@@ -1148,7 +1212,7 @@ def parseBulkSinglesCompact(solves, isMarathon, tableseparator=" " * 4):
         col_widths = [7, 7, 5, 7]  # Total time, Time, Moves, TPS
         headers = ["Total", "Time", "Moves", "TPS"]
     else:
-        col_widths = [7, 7, 5, 7]   # Puzzle, Time, Moves, TPS
+        col_widths = [7, 7, 5, 7]  # Puzzle, Time, Moves, TPS
         headers = ["Puzzle", "Time", "Moves", "TPS"]
 
     # Format header row
@@ -1184,6 +1248,7 @@ def parseBulkSinglesCompact(solves, isMarathon, tableseparator=" " * 4):
         textOutput += row_text + "\n"
 
     textOutput += "```\n"
+    textOutput += complexReplay + "\n"
     return textOutput
 
 
@@ -1296,6 +1361,7 @@ def getBestAverageOf(mainfield, amount, solves, ao4ao100):
             best_secondary_field_one_average = None
             best_secondary_field_two_average = None
             best_date = None
+            best_window = None
             expectedLen = amount - 2
             for i in range(len(solves) - amount + 1):
                 window = solves[i:i + amount]
@@ -1319,13 +1385,36 @@ def getBestAverageOf(mainfield, amount, solves, ao4ao100):
                     best_secondary_field_one_average = secondary_field_one_average
                     best_secondary_field_two_average = secondary_field_two_average
                     best_date = window[-1]['parent_data']["date"]
+                    best_window = window
+
             if best_average is not None:
                 best_average_formatter = formatStat(best_average, best_secondary_field_one_average,
                                                     best_secondary_field_two_average)
                 if ao4ao100:
-                    return f"Best ao{amount}: {best_average_formatter} | {best_date}\n"
+                    result = f"Best ao{amount}: {best_average_formatter} | {best_date}"
                 else:
-                    return f"Best ao{amount}: {best_average_formatter}\n"
+                    result = f"Best ao{amount}: {best_average_formatter}"
+
+                st = solves[0]['parent_data']['solve_type']
+                solveTypeNotWeird = st in ['Standard', 'BLD']
+                # Add replay link if amount is 5 or 12
+                if solveTypeNotWeird and amount in (5, 12) and best_window is not None:
+                    # Prepare arguments for getReplay based on mainfield
+                    replay_args = {
+                        'avgTime': best_average if mainfield == 'time' else (
+                            best_secondary_field_one_average if secondary_field_one == 'time'
+                            else best_secondary_field_two_average),
+                        'avgMoves': best_average if mainfield == 'moves' else (
+                            best_secondary_field_one_average if secondary_field_one == 'moves'
+                            else best_secondary_field_two_average),
+                        'avgTPS': best_average if mainfield == 'tps' else (
+                            best_secondary_field_one_average if secondary_field_one == 'tps'
+                            else best_secondary_field_two_average)
+                    }
+                    replay_link = getReplay(best_window, **replay_args)
+                    result += f"\n{replay_link}"
+
+                return result + "\n"
             else:
                 return None
 
@@ -1343,7 +1432,7 @@ def calculateAvgs(field, solves, ao4ao100):
     all = longest_consecutive_valid_solves(solves)
     if ao4ao100:
         amounts = list(range(4, min(all, 101)))  # creates a list from 4 to `all`
-        #amounts.append(1)  # adds 1 at the end of the list
+        # amounts.append(1)  # adds 1 at the end of the list
     else:
         amounts = [1000, 500, 200, 100, 50, 25, 12, 5, 1]
 
@@ -1390,6 +1479,88 @@ def getAvgInfo(solves, ao4ao100):
         text += calculateSelectionStats(solves, ao4ao100)
     else:
         text = ERROR_NON_CONSECUTIVE
+    # Process the text to extract and organize links by section
+    lines = text.split('\n')
+    sections = {
+        'time': {'name': 'Time Links', 'content': [], 'links': []},
+        'moves': {'name': 'Moves Links', 'content': [], 'links': []},
+        'tps': {'name': 'TPS Links', 'content': [], 'links': []}
+    }
+
+    current_section = 'time'  # Default starting section
+    all_previous_links = []  # Track all links from previous sections
+    section_headers_added = {'time': False, 'moves': False, 'tps': False}  # Track if we've added headers
+
+    # Separate content by sections and collect links
+    for line in lines:
+        # Check for section headers
+        if line == "Moves stats:":
+            current_section = 'moves'
+            continue  # Skip adding the header line now, we'll add it later
+        elif line == "Tps stats:":
+            current_section = 'tps'
+            continue  # Skip adding the header line now, we'll add it later
+
+        if line.startswith('http'):
+            # For time section, always add the link
+            if current_section == 'time':
+                sections[current_section]['links'].append(line)
+                all_previous_links.append(line)
+            # For moves section, check against time links
+            elif current_section == 'moves':
+                if line in sections['time']['links']:
+                    sections[current_section]['links'].append("Same as time")
+                else:
+                    sections[current_section]['links'].append(line)
+                    all_previous_links.append(line)
+            # For TPS section, check against all previous links
+            elif current_section == 'tps':
+                if line in sections['time']['links']:
+                    sections[current_section]['links'].append("Same as time")
+                elif 'moves' in sections and line in sections['moves']['links'] and line != "Same as time":
+                    sections[current_section]['links'].append("Same as moves")
+                else:
+                    sections[current_section]['links'].append(line)
+                    all_previous_links.append(line)
+        else:
+            sections[current_section]['content'].append(line)
+
+    # Rebuild the text with proper section headers
+    text_parts = []
+    text_parts.extend(sections['time']['content'])
+
+    if sections['moves']['content'] or sections['moves']['links']:
+        text_parts.append("Moves stats:")
+        text_parts.extend(sections['moves']['content'])
+
+    if sections['tps']['content'] or sections['tps']['links']:
+        text_parts.append("Tps stats:")
+        text_parts.extend(sections['tps']['content'])
+
+    text = '\n'.join(text_parts)
+
+    # Prepare replay links section
+    replay_sections = []
+    for section in ['time', 'moves', 'tps']:
+        links = sections[section]['links']
+        if not links:
+            continue
+
+        section_lines = [f"{sections[section]['name']}:"]
+
+        if len(links) == 1:
+            section_lines.append(f"ao5 link: {links[0]}")
+        else:
+            # First link is ao12, second is ao5
+            section_lines.append(f"ao12 link: {links[0]}")
+            for link in links[1:]:
+                section_lines.append(f"ao5 link: {link}")
+
+        replay_sections.append('\n'.join(section_lines))
+
+    # Add replay links section if there are any links
+    if replay_sections:
+        text += '\n\nReplay links:\n' + '\n\n'.join(replay_sections)
     return text
 
 
@@ -1464,7 +1635,7 @@ class SolvesTableSelectionController:
         if bulkInfoNotProvided:
             text = ""
         else:
-            text = parseBulkSinglesCompact(solves, isMarathon, tableseparator="\t")
+            text = parseBulkSinglesCompact(solves, isMarathon)
         if self.includeBulk:
             text += "Very detailed info:\n"
             text += TABLE_SEPARATOR.join(singleHeaders) + "\n"
@@ -1826,7 +1997,8 @@ class SessionController:
         mainSolvesData = mainSolvesData + skippedScrambles
         manageSolvesTable(mainSolvesData, self.dbpath, self.tableComponents, categoryFilters,
                           self.include_checkbox_var.get(), self.graphComponents["textbox"],
-                          self.graphComponents["imageLabel"], self.includeStatsTableCheckbox_var.get(), self.ao4ao100_var.get())
+                          self.graphComponents["imageLabel"], self.includeStatsTableCheckbox_var.get(),
+                          self.ao4ao100_var.get())
         setAllDatePickers(self.datePickerElements, self.timestamp_min, self.timestamp_max)
         self.setProgress(100)
 
@@ -1888,7 +2060,7 @@ class SessionController:
         else:
             self.clearPresets()
             self.setToLatest.set(False)
-            #self.update()
+            # self.update()
 
     def updateByPresets(self, item):
         if self.checkboxes is None:
@@ -1930,7 +2102,8 @@ class SessionController:
         return getPickedTimestamps(self.datePickerElements)
 
     def rootFocusedIn(self, event):
-        if event.widget == self.root and self.autoUpdateVar.get() and was_file_changed(self.dbpath, self.lastKnownChange):
+        if event.widget == self.root and self.autoUpdateVar.get() and was_file_changed(self.dbpath,
+                                                                                       self.lastKnownChange):
             self.lastKnownChange = os.path.getmtime(self.dbpath)
             self.regularUpdate()
 
@@ -1991,6 +2164,139 @@ def run():
     configureSessionControls(sessionControls, dbpath, limitedCategoriesFrames, root, tableComponents, graphComponents)
 
     root.mainloop()
+
+
+class ReplayGenerator:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def compress_array_to_string(input_array):
+        """Compress an array to a URL-safe string"""
+
+        json_string = json.dumps(input_array)
+        compressed_data = zlib.compress(json_string.encode(), level=9)
+        base64_encoded_string = base64.b64encode(compressed_data).decode()
+        return encodeURIComponent(base64_encoded_string)
+
+    def create_replay_url(self, item, solveData, event, tps, width, height,
+                          scoreTitle, videoLinkForReplay, scoreTier, isWR):
+        """Create the final replay URL by combining all components"""
+        replay_data = [item, solveData, event, tps, width, height,
+                       scoreTitle, videoLinkForReplay, scoreTier, isWR]
+        return "https://slidysim.online/replay?r=" + self.compress_array_to_string(replay_data)
+
+    def generate_item(self, width, height, controlsText, solveType, displayType,
+                      avgLen, timeMS, movesMS, tpsMS, timestamp):
+        """Generate the main item structure for the replay"""
+        return {
+            "width": width,
+            "height": height,
+            "leaderboardType": "time",
+            "controls": controlsText,
+            "gameMode": solveType,
+            "displayType": displayType,
+            "nameFilter": "Player",
+            "avglen": avgLen,
+            "time": timeMS,
+            "moves": movesMS,
+            "tps": tpsMS,
+            "timestamp": timestamp,
+            "solve_data_available": True,
+            "videolink": -1
+        }
+
+    def generate_solve_data(self, solutionsList, timesList, movesList, tpsList,
+                            bldMemoList, movetimesList):
+        """Generate compressed solve data from the solution components"""
+        solutions_str = ",".join(solutionsList)
+        times_str = ",".join(map(str, timesList))
+        moves_str = ",".join(map(str, movesList))
+        tps_str = ",".join(map(str, tpsList))
+
+        bld_memo_str = ",".join(map(str, bldMemoList)) if isinstance(bldMemoList, list) else str(bldMemoList)
+
+        movetimes_str = ";".join(
+            [",".join(map(str, sublist)) for sublist in movetimesList]
+        )
+        movetimes_str = f"[{movetimes_str}]"
+
+        combined_data = ";".join([
+            solutions_str,
+            times_str,
+            moves_str,
+            tps_str,
+            bld_memo_str,
+            movetimes_str
+        ])
+        compressed_data = zlib.compress(combined_data.encode(), level=9)
+        base64_encoded_string = base64.b64encode(compressed_data).decode()
+        return base64_encoded_string
+
+    def generate_event(self):
+        """Generate the event structure (currently just a simple object)"""
+        return {
+            "isTrusted": True
+        }
+
+    def generate_score_title(self, controls, timestamp):
+        """Generate the formatted score title with timestamp"""
+        dt = datetime.fromtimestamp(timestamp / 1000)
+        date_str = dt.strftime("%Y.%m.%d")
+        time_str = dt.strftime("%H:%M:%S")
+
+        return (
+            f'<span>'
+            f'Solve from DB<br>'
+            f'{controls} | {date_str} {time_str}'
+            f'</span>'
+        )
+
+    def generate_complex_replay(self, width, height, controlsText, solveType, displayType, timestamp,
+                                solutionsList, timesList, movesList, tpsList, bldMemoList, movetimesList,
+                                FinalTimeMS, FinalMovesMS, FinalTPSMS):
+        """Main method to generate a complete replay URL from all components"""
+        if ('relay' in solveType) or ("Marathon" in solveType):
+            avgLen = 1
+        else:
+            avgLen = len(solutionsList)
+        item = self.generate_item(
+            width=width,
+            height=height,
+            controlsText=controlsText,
+            solveType=solveType,
+            displayType=displayType,
+            avgLen=avgLen,
+            timeMS=FinalTimeMS,
+            movesMS=FinalMovesMS,
+            tpsMS=FinalTPSMS,
+            timestamp=timestamp
+        )
+
+        solveData = self.generate_solve_data(
+            solutionsList=solutionsList,
+            timesList=timesList,
+            movesList=movesList,
+            tpsList=tpsList,
+            bldMemoList=bldMemoList,
+            movetimesList=movetimesList
+        )
+
+        event = self.generate_event()
+        scoreTitle = self.generate_score_title(controlsText, timestamp)
+
+        return self.create_replay_url(
+            item=item,
+            solveData=solveData,
+            event=event,
+            tps=FinalTPSMS,
+            width=width,
+            height=height,
+            scoreTitle=scoreTitle,
+            videoLinkForReplay=-1,
+            scoreTier="alpha",
+            isWR=False
+        )
 
 
 if __name__ == "__main__":
