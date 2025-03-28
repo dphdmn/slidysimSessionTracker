@@ -48,7 +48,7 @@ DB_ERROR_FETCHING_6 = "Critical error when fetching Single solves as Main. \nExi
 ENTER_SLIDYSIM_PATH_REQUEST = "Enter Slidysim folder path\n(press Cancel to close the App)"
 MY_WINDOW_WIDTH = 1600
 MY_WINDOW_HEIGHT = 900
-MY_APP_TITLE = "Slidysim Session Tracker v1.0.1"
+MY_APP_TITLE = "Slidysim Session Tracker v2.0.0 beta"
 SLIDYSIM_DEFAULT_PATH = ""
 TABLE_SEPARATOR = ";"
 singleHeaders = ["Parent", "Puzzle", "Completed", "Time", "Moves", "TPS", "Scramble", "Solution", "Movetimes",
@@ -140,8 +140,8 @@ CATEGORY_CHECKBOX_MAPPING = {
 DIFS_MAP_HISTOGRAM = {
     (0, 5): 0.1,
     (5, 15): 0.5,
-    (15, 30): 1,
-    (30, 120): 2,
+    (15, 60): 1,
+    (60, 120): 2,
     (120, 400): 5,
     (400, 1000): 10,
     (1000, 2000): 20,
@@ -192,12 +192,12 @@ def getBinEdges(data):
     num_bins = int((max_value - min_value) / bin_width) + 1
     bin_edges = [round(min_value + i * bin_width, 1) for i in range(num_bins + 1)]
     length = len(bin_edges)
-    if length > 40:
+    if length > 50:
         bin_edges = bin_edges[::2]
-    if length > 80:
-        bin_edges = bin_edges[::4]
-    if length > 160:
-        bin_edges = bin_edges[::8]
+    if length > 100:
+        bin_edges = bin_edges[::5]
+    if length > 200:
+        bin_edges = bin_edges[::10]
     return bin_edges
 
 
@@ -316,7 +316,27 @@ def renderPuzzleImage(scramble, imageLabel, reconstructionLink, iLoveEgg=False):
             exit()
         if reconstructionLink:
             imageLabel.configure(cursor='hand2')
-            imageLabel.bind('<ButtonRelease-1>', lambda event: webbrowser.open(reconstructionLink))
+
+            def _open_link(event):
+                try:
+                    webbrowser.open(reconstructionLink)
+                except ValueError as e:
+                    if "startfile: filepath too long" in str(e).lower():
+                        import pyperclip
+                        pyperclip.copy(reconstructionLink)
+                        toast = ToastNotification(
+                            title="Link is too long to open.",
+                            message="It has been copied to your clipboard!",
+                            duration=2000,
+                            bootstyle="warning",
+                            icon="🥚",
+                            position=(500, 500, 'se')
+                        )
+                        toast.show_toast()
+                    else:
+                        raise
+
+            imageLabel.bind('<ButtonRelease-1>', _open_link)
         else:
             imageLabel.unbind('<ButtonRelease-1>')
             imageLabel.configure(cursor='arrow')
@@ -1122,11 +1142,12 @@ def getReconstructionLink(solution, tpsintform, scramble, movetimeslist=-1):
     json_string = json.dumps(input_array)
     compressed_data = zlib.compress(json_string.encode(), level=9)
     base64_encoded_string = base64.b64encode(compressed_data).decode()
-    return "https://dphdmn.github.io/betterLeaderboard/?r=" + ''.join(
+    return "https://slidysim.online/replay?r=" + ''.join(
         c if c.isalnum() or c in ['-', '_', '.', '~'] else f"%{ord(c):02X}" for c in base64_encoded_string)
 
 
-def parseBulkSinglesCompact(solves, isMarathon, tableseparator="\t"):
+def parseBulkSinglesCompact(solves, isMarathon, tableseparator=" " * 4):
+    tableseparator = "\t"
     parentData = solves[0]['parent_data']
     parent_solve_type = parentData['solve_type']
     parent_time = parentData['time']
@@ -1143,32 +1164,50 @@ def parseBulkSinglesCompact(solves, isMarathon, tableseparator="\t"):
     if not parent_completed:
         parentCategory = "[Not finished] " + parentCategory
     parentScore = f"{parent_time:.3f}s ({parent_moves}/{parent_tps:.3f})"
-    parentFinal = f"Short info for: {parentCategory} {parentScore} solve done at {parentData['date']}\n"
+    parentFinal = f"{parentCategory} {parentScore} solve done at {parentData['date']}\n```\n"
     textOutput = parentFinal
-    headers = ["Time", "Moves", "TPS", "Scramble"]
-    if not isMarathon:
-        headers.insert(0, "Puzzle")
+
+    # Define column widths
+    if isMarathon:
+        col_widths = [7, 7, 5, 7]  # Total time, Time, Moves, TPS
+        headers = ["Total", "Time", "Moves", "TPS"]
     else:
-        headers.insert(0, "Total time")
-        totalTime = 0
-    textOutput += tableseparator.join(headers)
+        col_widths = [7, 7, 5, 7]   # Puzzle, Time, Moves, TPS
+        headers = ["Puzzle", "Time", "Moves", "TPS"]
+
+    # Format header row
+    header_row = []
+    for i, header in enumerate(headers):
+        header_row.append(f"{header:^{col_widths[i]}}")
+    textOutput += tableseparator.join(header_row)
     textOutput += "\n"
+
+    totalTime = 0
     for singleSolve in solves:
         time = singleSolve['time']
-        s_time = f"{time: .3f}"
+        s_time = f"{time:.3f}"
         s_moves = str(singleSolve['moves'])
         s_tps = f"{singleSolve['tps']:.3f}"
-        s_scramble = singleSolve['scramble']
-        row = [s_time, s_moves, s_tps, s_scramble]
-        if not isMarathon:
-            row.insert(0, singleSolve['puzzle'])
+
+        row = []
+        if isMarathon:
+            totalTime += time
+            row.append(f"{totalTime:>{col_widths[0]}.3f}")
+            row.append(f"{s_time:>{col_widths[1]}}")
         else:
-            totalTime = totalTime + time
-            row.insert(0, f"{totalTime: .3f}")
-        textOutput += tableseparator.join(row)
+            puzzle = singleSolve['puzzle']
+            row.append(f"{puzzle:>{col_widths[0]}}")
+            row.append(f"{s_time:>{col_widths[1]}}")
+
+        row.append(f"{s_moves:^{col_widths[2]}}")
+        row.append(f"{s_tps:>{col_widths[3]}}")
+
+        row_text = tableseparator.join(row)
         if not singleSolve['completed']:
-            textOutput += " [Not finished] "
-        textOutput += "\n"
+            row_text += " [Not finished]"
+        textOutput += row_text + "\n"
+
+    textOutput += "```\n"
     return textOutput
 
 
@@ -1220,15 +1259,11 @@ def parseSingleToText(singleInfo, tableStyle=False, tableseparator="\t"):
         singleLink = getReconstructionLink(singleInfo['solution'], int(singleInfo['tps'] * 1000),
                                            singleInfo['scramble'],
                                            singleInfo['movetimes'])
-        singleLinkShort = getReconstructionLink(singleInfo['solution'], int(singleInfo['tps'] * 1000),
-                                                singleInfo['scramble'])
-        linkToReturn = singleLink if len(singleLink) < LENGTH_LIMIT_LINK else singleLinkShort
-        finalBlock = '\n'.join([parentFinal,
-                                singleBasic,
-                                f"Scramble: {singleInfo['scramble']}",
-                                f"Solution: {singleInfo['solution']}",
-                                f"Movetimes: {singleInfo['movetimes']}",
-                                f"Reconstruction: {linkToReturn}"])
+        linkToReturn = singleLink
+        finalBlock = '\n'.join([
+            parentFinal,
+            f"[{singleBasic}]({linkToReturn})" if len(linkToReturn) < 1800 else f"{singleBasic}\n{linkToReturn}"
+        ])
 
         if not tableStyle:
             return linkToReturn, f"{finalBlock}\n"
@@ -1869,7 +1904,7 @@ class SessionController:
         else:
             self.clearPresets()
             self.setToLatest.set(False)
-            self.update()
+            #self.update()
 
     def updateByPresets(self, item):
         if self.checkboxes is None:
