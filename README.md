@@ -3,7 +3,7 @@ GUI application, written in Python/Tkinter to track session stats for sliding pu
 
 ![Main Screenshot](github_examples/main.png)
 
-## [v1.0.1 windows release](https://github.com/dphdmn/slidysimSessionTracker/releases/tag/v1.0.1)
+## [v2.0.0 windows release](https://github.com/dphdmn/slidysimSessionTracker/releases/tag/v2.0.0)
 
 ### Features:
 
