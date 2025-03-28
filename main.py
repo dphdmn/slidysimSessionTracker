@@ -1,6 +1,5 @@
 import math
 import os
-import subprocess
 import tkinter as tk
 import pyperclip
 import sqlite3
@@ -26,8 +25,6 @@ from PIL import Image, ImageTk, ImageDraw, ImageFont
 import configparser
 from tktimepicker import SpinTimePickerModern
 import locale
-from cairosvg import svg2png
-import shutil
 
 # pyinstaller -F --clean --noconsole --icon=icon.ico main.py
 
@@ -290,56 +287,32 @@ def renderGraphImage(imageLabel, data, histogram, iteration=0, data_labels=None)
                                                                         data_labels=data_labels))
 
 
-def renderPuzzleImage(scramble, imageLabel, reconstructionLink, iLoveEgg=False):
-    if iLoveEgg:
-        file = 'sessionTrackerResources/i_love_egg.png'
-        imageLabel.configure(cursor='arrow')
-        imageLabel.bind('<ButtonRelease-1>',
-                        lambda event: toastUpdate("I love Egg!\n(Clicking Egg does nothing, do solves already"))
+def renderPuzzleImage(imageLabel, reconstructionLink):
+    file = 'sessionTrackerResources/i_love_egg.png'
+    if reconstructionLink:
+        imageLabel.configure(cursor='hand2')
+        def _open_link(event):
+            try:
+                webbrowser.open(reconstructionLink)
+            except ValueError as e:
+                if "startfile: filepath too long" in str(e).lower():
+                    import pyperclip
+                    pyperclip.copy(reconstructionLink)
+                    toast = ToastNotification(
+                        title="Link is too long to open.",
+                        message="It has been copied to your clipboard!",
+                        duration=2000,
+                        bootstyle="warning",
+                        icon="🥚",
+                        position=(500, 500, 'se')
+                    )
+                    toast.show_toast()
+                else:
+                    raise
+        imageLabel.bind('<ButtonRelease-1>', _open_link)
     else:
-        try:
-            file = 'scramble_tmp.png'
-            command = [
-                "slidy",
-                "render",
-                "--output",
-                "img_tmp.svg",
-                scramble
-            ]
-            subprocess.run(command)
-            with open("img_tmp.svg", 'r') as mysvg:
-                svg2png(output_height=int(MY_WINDOW_HEIGHT / 2.5), output_width=int(MY_WINDOW_WIDTH / 2.7),
-                        bytestring=mysvg.read(), write_to=file)
-        except FileNotFoundError:
-            Messagebox.show_error(
-                "Slidy-cli was not found, please put it in the folder of the script and call 'slidy' (slidy.exe)\nYou can download it from github at https://github.com/benwh1/slidy-cli/releases/tag/v0.2.0")
-            exit()
-        if reconstructionLink:
-            imageLabel.configure(cursor='hand2')
-
-            def _open_link(event):
-                try:
-                    webbrowser.open(reconstructionLink)
-                except ValueError as e:
-                    if "startfile: filepath too long" in str(e).lower():
-                        import pyperclip
-                        pyperclip.copy(reconstructionLink)
-                        toast = ToastNotification(
-                            title="Link is too long to open.",
-                            message="It has been copied to your clipboard!",
-                            duration=2000,
-                            bootstyle="warning",
-                            icon="🥚",
-                            position=(500, 500, 'se')
-                        )
-                        toast.show_toast()
-                    else:
-                        raise
-
-            imageLabel.bind('<ButtonRelease-1>', _open_link)
-        else:
-            imageLabel.unbind('<ButtonRelease-1>')
-            imageLabel.configure(cursor='arrow')
+        imageLabel.unbind('<ButtonRelease-1>')
+        imageLabel.configure(cursor='arrow')
     imgobj = tk.PhotoImage(file=file)
     imageLabel.configure(image=imgobj)
     imageLabel.image = imgobj
@@ -391,11 +364,13 @@ def createSolvesFrameUI(frame):
     cbframe = ttk.Frame(frame, bootstyle="black")
     cbframe.pack(fill=tk.X)
     include_checkbox = ttk.Checkbutton(cbframe, text="Include skipped/failed solves", bootstyle="info")
-    include_checkbox.pack(ipady=10, padx=10, side="left")
+    include_checkbox.pack(ipady=8, padx=8, side="left")
     fake_singles_checkbox = ttk.Checkbutton(cbframe, text="Singles from ALL solve types", bootstyle="info")
-    fake_singles_checkbox.pack(ipady=10, padx=10, side="left")
-    includeStatsTableCheckbox = ttk.Checkbutton(cbframe, text="Detailed info on bulk selection", bootstyle="info")
-    includeStatsTableCheckbox.pack(ipady=10, padx=10, side="left")
+    fake_singles_checkbox.pack(ipady=8, padx=8, side="left")
+    includeStatsTableCheckbox = ttk.Checkbutton(cbframe, text="Detailed info", bootstyle="info")
+    includeStatsTableCheckbox.pack(ipady=8, padx=8, side="left")
+    ao4ao100Checkbox = ttk.Checkbutton(cbframe, text="ao4 - ao100", bootstyle="info")
+    ao4ao100Checkbox.pack(ipady=8, padx=8, side="left")
     dt = Tableview(
         master=frame,
         searchable=True,
@@ -419,7 +394,8 @@ def createSolvesFrameUI(frame):
     return {"solvesTable": dt,
             "include_checkbox": include_checkbox,
             'fakeSingles_checkbox': fake_singles_checkbox,
-            'includeStatsTableCheckbox': includeStatsTableCheckbox}
+            'includeStatsTableCheckbox': includeStatsTableCheckbox,
+            'ao4ao100Checkbox': ao4ao100Checkbox}
 
 
 def getCategoryStringSimple(categoryDict):
@@ -525,14 +501,14 @@ def createGraphsFrameUI(frame):
     graphContainer = ttk.Frame(frame, bootstyle="darkly")
     singleSolvesInfoContainer.pack(side=tk.RIGHT, expand=False, fill=Y)
     textBoxLabel = tk.Label(master=singleSolvesInfoContainer,
-                            text="It's solves data (sometimes is readable) it's in your buffer!")
+                            text="It's solves data. It will copy automatically after solves are selected.")
     textBoxLabel.config(borderwidth=2, relief="groove", highlightthickness=2)
     textBoxLabel.pack(side=tk.TOP, fill=tk.BOTH, ipadx=10, ipady=2, expand=False, anchor="center", )
     textbox = ttk.Text(master=singleSolvesInfoContainer)
     textbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     textbox.configure(width=int(MY_WINDOW_WIDTH / 28))
     graphContainer.pack(side=tk.LEFT, fill=BOTH, expand=True, padx=10)
-    graphLabel = tk.Label(master=graphContainer, text="It's place for a graph / puzzle Image (Try clicking it)!")
+    graphLabel = tk.Label(master=graphContainer, text="Reconstruction Link Egg Image. Click on it after selecteing a solve!")
     graphLabel.config(borderwidth=2, relief="groove", highlightthickness=2)
     graphLabel.pack(side=tk.TOP, fill=tk.BOTH, ipadx=10, ipady=2, expand=False, anchor="center")
     yscrollbar = Scrollbar(singleSolvesInfoContainer, orient="vertical", bootstyle="info", command=textbox.yview)
@@ -1300,7 +1276,7 @@ def findBest(validSolves, mainfield, bestIsLower):
         return max(validSolves, key=lambda solve: solve[mainfield])
 
 
-def getBestAverageOf(mainfield, amount, solves):
+def getBestAverageOf(mainfield, amount, solves, ao4ao100):
     secondary_field_one, secondary_field_two = {'time': ('moves', 'tps'),
                                                 'moves': ('time', 'tps'),
                                                 'tps': ('time', 'moves')}.get(mainfield)
@@ -1319,7 +1295,7 @@ def getBestAverageOf(mainfield, amount, solves):
             best_average = None
             best_secondary_field_one_average = None
             best_secondary_field_two_average = None
-            best_date = None  # TESTING
+            best_date = None
             expectedLen = amount - 2
             for i in range(len(solves) - amount + 1):
                 window = solves[i:i + amount]
@@ -1342,11 +1318,14 @@ def getBestAverageOf(mainfield, amount, solves):
                     best_average = average
                     best_secondary_field_one_average = secondary_field_one_average
                     best_secondary_field_two_average = secondary_field_two_average
-                    best_date = window[-1]['parent_data']["date"]  # TESTING
+                    best_date = window[-1]['parent_data']["date"]
             if best_average is not None:
                 best_average_formatter = formatStat(best_average, best_secondary_field_one_average,
                                                     best_secondary_field_two_average)
-                return f"Best ao{amount}: {best_average_formatter} | {best_date}\n"  # TESTING DATE PART
+                if ao4ao100:
+                    return f"Best ao{amount}: {best_average_formatter} | {best_date}\n"
+                else:
+                    return f"Best ao{amount}: {best_average_formatter}\n"
             else:
                 return None
 
@@ -1359,20 +1338,19 @@ def longest_consecutive_valid_solves(solves):
     return longest
 
 
-def calculateAvgs(field, solves):
+def calculateAvgs(field, solves, ao4ao100):
     averages = []
     all = longest_consecutive_valid_solves(solves)
-    # amounts = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 12, 5, 1]
-
-    # TESTING
-    amounts = list(range(4, min(all, 101)))  # creates a list from 4 to `all`
-    amounts.append(1)  # adds 1 at the end of the list
-    # TESTING
+    if ao4ao100:
+        amounts = list(range(4, min(all, 101)))  # creates a list from 4 to `all`
+        #amounts.append(1)  # adds 1 at the end of the list
+    else:
+        amounts = [1000, 500, 200, 100, 50, 25, 12, 5, 1]
 
     if all > 5 and all not in amounts:
         amounts.insert(0, all)
     for amount in amounts:
-        average = getBestAverageOf(mainfield=field, amount=amount, solves=solves)
+        average = getBestAverageOf(mainfield=field, amount=amount, solves=solves, ao4ao100=ao4ao100)
         if average is not None:
             averages.append(average)
     stats = ''.join(averages)
@@ -1381,13 +1359,13 @@ def calculateAvgs(field, solves):
     return f"{field.capitalize()} stats:\n{stats}"
 
 
-def calculateSelectionStats(solves):
+def calculateSelectionStats(solves, ao4ao100):
     solvesSelected = len(solves)
     solvesValid = sum(1 for solve in solves if solve['parent_data']['fullyCompleted'])
     solvesSkipped = sum(1 for solve in solves if solve['time'] == 9999999)
-    timeStats = calculateAvgs(field='time', solves=solves)
-    moveStats = calculateAvgs(field='moves', solves=solves)
-    tpsStats = calculateAvgs(field='tps', solves=solves)
+    timeStats = calculateAvgs(field='time', solves=solves, ao4ao100=ao4ao100)
+    moveStats = calculateAvgs(field='moves', solves=solves, ao4ao100=ao4ao100)
+    tpsStats = calculateAvgs(field='tps', solves=solves, ao4ao100=ao4ao100)
 
     return "\n".join([
         f"Solves selected: {solvesSelected}",
@@ -1399,7 +1377,7 @@ def calculateSelectionStats(solves):
     ])
 
 
-def getAvgInfo(solves):
+def getAvgInfo(solves, ao4ao100):
     text = ""
     lowest_sid = solves[0]['parent_data']['SID']
     noGaps = all(solves[i]['parent_data']['SID'] == lowest_sid + i for i in range(len(solves)))
@@ -1409,7 +1387,7 @@ def getAvgInfo(solves):
     if noGaps:
         if not isSingleCategory:
             text += WARNING_MIXED_SOLVES
-        text += calculateSelectionStats(solves)
+        text += calculateSelectionStats(solves, ao4ao100)
     else:
         text = ERROR_NON_CONSECUTIVE
     return text
@@ -1423,7 +1401,7 @@ def indexMainData(mainSolvesData):
 
 
 class SolvesTableSelectionController:
-    def __init__(self, textbox, imageLabel, solvesTableView, mainSolvesData, dbpath, includeBulk):
+    def __init__(self, textbox, imageLabel, solvesTableView, mainSolvesData, dbpath, includeBulk, ao4ao100):
         self.latestSelection = {}
         self.textbox = textbox
         self.imageLabel = imageLabel
@@ -1431,6 +1409,7 @@ class SolvesTableSelectionController:
         self.mainSolvesData = mainSolvesData
         self.dbpath = dbpath
         self.includeBulk = includeBulk
+        self.ao4ao100 = ao4ao100
 
     def solvesSelectedEvent(self, event):
         self.addSinglesInfo()
@@ -1459,7 +1438,7 @@ class SolvesTableSelectionController:
                     self.addSinglesInfo(selectedIDs=self.latestSelection.keys())
             else:
                 solves = self.emulateSingleSolvesFromParents(selectedRows)
-                text = getAvgInfo(solves)
+                text = getAvgInfo(solves, self.ao4ao100)
                 text += self.displayMultipleSolvesData(solves, True)
                 bad = any(solve.get("completed", False) == False for solve in solves)
                 self.replaceAndCopyText(text, bad)
@@ -1477,7 +1456,7 @@ class SolvesTableSelectionController:
 
     def displayOneSolveData(self, solve):
         reconLink, text = parseSingleToText(solve)
-        renderPuzzleImage(solve['scramble'], self.imageLabel, reconLink)
+        renderPuzzleImage(self.imageLabel, reconLink)
         return text
 
     def displayMultipleSolvesData(self, solves, bulkInfoNotProvided):
@@ -1650,12 +1629,12 @@ def styleSolvesTable(addedRowIDs, mainSolvesData, solvesTable, includeSKipped, c
 
 
 def manageSolvesTable(mainSolvesData, dbpath, tableComponents, categoryFilters, includeSkipped, textbox, imageLabel,
-                      includeBulk):
+                      includeBulk, ao4ao100):
     solvesTable = tableComponents["solvesTable"]
     mainSolvesData = indexMainData(mainSolvesData)
     addedRowIDs, columns = populateTableData(solvesTable, categoryFilters, mainSolvesData, includeSkipped)
     selectionController = SolvesTableSelectionController(textbox, imageLabel, solvesTable.view, mainSolvesData, dbpath,
-                                                         includeBulk)
+                                                         includeBulk, ao4ao100)
     for list_id, item_id in enumerate(solvesTable.view.get_children()):
         mainSolvesData[addedRowIDs[list_id]]["item_id"] = item_id
     styleSolvesTable(addedRowIDs, mainSolvesData, solvesTable, includeSkipped, columns)
@@ -1747,6 +1726,7 @@ class SessionController:
         self.includeStatsTableCheckbox_var = ttk.BooleanVar()
         self.loadSinglesAsMain_var = ttk.BooleanVar()
         self.include_checkbox_var = ttk.BooleanVar()
+        self.ao4ao100_var = ttk.BooleanVar()
         self.dbpath = dbpath
         self.limitedCategoriesFrames = limitedCategoriesFrames
         self.sessionTree = sessionTree
@@ -1765,16 +1745,20 @@ class SessionController:
 
     def configureTableCheckbox(self):
         tableCB = self.tableComponents["include_checkbox"]
-        tableCB.configure(command=self.update, variable=self.include_checkbox_var)
+        tableCB.configure(variable=self.include_checkbox_var)
         self.include_checkbox_var.set(True)
 
         tableCB_fake = self.tableComponents["fakeSingles_checkbox"]
-        tableCB_fake.configure(command=self.update, variable=self.loadSinglesAsMain_var)
+        tableCB_fake.configure(variable=self.loadSinglesAsMain_var)
         self.loadSinglesAsMain_var.set(True)
 
         tableCB_bulk = self.tableComponents["includeStatsTableCheckbox"]
-        tableCB_bulk.configure(command=self.update, variable=self.includeStatsTableCheckbox_var)
+        tableCB_bulk.configure(variable=self.includeStatsTableCheckbox_var)
         self.includeStatsTableCheckbox_var.set(False)
+
+        tableCB_ao4ao100 = self.tableComponents["ao4ao100Checkbox"]
+        tableCB_ao4ao100.configure(variable=self.ao4ao100_var)
+        self.ao4ao100_var.set(False)
 
     def setProgress(self, percent, speed=0.005):
         current_progress = self.progress.get()
@@ -1796,7 +1780,7 @@ class SessionController:
     def update(self):
         loadSinglesAsMain = self.loadSinglesAsMain_var.get()
         replaceText(self.graphComponents['textbox'], "")
-        renderPuzzleImage("", self.graphComponents['imageLabel'], "", iLoveEgg=True)
+        renderPuzzleImage(self.graphComponents['imageLabel'], None)
         setByLatest = self.setToLatest.get()
         self.setProgress(0)
         if self.dynamic:
@@ -1842,7 +1826,7 @@ class SessionController:
         mainSolvesData = mainSolvesData + skippedScrambles
         manageSolvesTable(mainSolvesData, self.dbpath, self.tableComponents, categoryFilters,
                           self.include_checkbox_var.get(), self.graphComponents["textbox"],
-                          self.graphComponents["imageLabel"], self.includeStatsTableCheckbox_var.get())
+                          self.graphComponents["imageLabel"], self.includeStatsTableCheckbox_var.get(), self.ao4ao100_var.get())
         setAllDatePickers(self.datePickerElements, self.timestamp_min, self.timestamp_max)
         self.setProgress(100)
 
@@ -1996,10 +1980,6 @@ def run():
     root = ttk.Window(size=(MY_WINDOW_WIDTH, MY_WINDOW_HEIGHT), title=MY_APP_TITLE, themename='darkly',
                       minsize=(MY_WINDOW_WIDTH, MY_WINDOW_HEIGHT), position=(50, 50))
     setIcon(root)
-    if not shutil.which("slidy"):
-        Messagebox.show_error(
-            "Slidy-cli was not found, please put it in the folder of the script and call 'slidy' (slidy.exe)\nYou can download it from github at https://github.com/benwh1/slidy-cli/releases/tag/v0.2.0")
-        exit()
     dbpath = connect(root)
     sessionControlFrame, categoryLimiterFrame, graphsFrame, solvesFrame = createFramesUI(root)
     sessionControls = createSessionControlFrameUI(sessionControlFrame, dbpath)

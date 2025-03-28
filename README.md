@@ -44,13 +44,8 @@ GUI application, written in Python/Tkinter to track session stats for sliding pu
 
 # Requirements
 
-### slidy-cli
-Download it from the [slidy-cli GitHub releases](https://github.com/benwh1/slidy-cli/releases/tag/v0.2.0). 
-
-Ensure that it is called `slidy` and is either in your system PATH or located in the same folder as the script.
-
 ### Python Libraries
-Ensure you have the following Python libraries installed:
+If you are running a python script directly, ensure you have the following Python libraries installed:
 
 - `pyperclip`
 - `ttkbootstrap`
@@ -58,32 +53,16 @@ Ensure you have the following Python libraries installed:
 - `Pillow`
 - `configparser`
 - `tktimepicker`
-- `cairosvg`
 
-### Special Instructions for Windows Users
-If you encounter issues with importing `cairosvg` on Windows, follow these steps to install `cairocffi` using `pipwin`:
+#### v2.0 Requirements change
 
-1. Install `pipwin`:
-   ```sh
-   pip install pipwin
-   ```
+Puzzle Image generation was removed from v2.0.
 
-2. Use `pipwin` to install `cairocffi`:
-   ```sh
-   pipwin install cairocffi
-   ```
+Therefore, cairosvg is no longer required, 3rd party tool ``slidy-cli`` is also no longer required.
 
-By following these instructions, you should have all the necessary dependencies installed and configured correctly.
+Instead of puzzle image, just a clickable Egg button is used.
 
-#### pipwin in windows also may now install properly on new versions of python. It worked for me in 3.9.13.
-
-# Known Issues and Notes
-
-### Windows 11 flickering issue
-
-When running app from exe under Win11, I have noticed flickering issue with automatic updates. It starts running them over and over again, and some window opens on top of it. Turns out it is slidy.exe running from subprocess command. It does not occur when program is running from python script directly, and it was not an issue at Windows 10, no slidy.exe cmd window was ever visible. To avoid infinite loop of updates, make sure to go to your windows terminal settings, and set default terminal to old cmd, instead of "let windows decide" or a new one. Opening new terminal by default seem to trigger lose focus event on an app, so it runs update again.
-
-### Other notes
+# Notes
 
 - **Scrambler Limitations**: The program supports only the Random Permutation scrambler type. It does not support random moves or custom difficulty settings. Implementing these features would add complexity to an already cluttered interface and codebase.
   
